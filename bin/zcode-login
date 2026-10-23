@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Логин в ZCode через нативный device flow рантайма.
+#
+# Лаунчер zcode-app-cli разрешает browser-login только на macOS (колбэк zcode://
+# регистрируется только там), но в самом рантайме есть device flow:
+# /oauth/cli/init -> ссылка -> авторизация в браузере на ЛЮБОМ устройстве -> /oauth/cli/poll.
+# Скрипт зовёт рантайм напрямую и обходит mac-only проверку.
+set -euo pipefail
+
+RUNTIME="${ZCODE_RUNTIME:-$HOME/.local/lib/node_modules/zcode-app-cli/vendor/zcode.cjs}"
+NODE="${ZCODE_NODE:-$(command -v node || true)}"
+[ -z "$NODE" ] && [ -x "$HOME/.zcode/server/node" ] && NODE="$HOME/.zcode/server/node"
+[ -z "$NODE" ] && { echo "node not found: install node.js >= 20" >&2; exit 1; }
+[ -f "$RUNTIME" ] || { echo "runtime not found: npm i -g zcode-app-cli" >&2; exit 1; }
+
+echo "Open the link below on any device where you are logged into chat.z.ai."
+echo "The flow lives ~12 minutes, polling is automatic."
+echo
+
+exec "$NODE" "$RUNTIME" login --no-browser

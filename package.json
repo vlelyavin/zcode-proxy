@@ -1,0 +1,22 @@
+{
+  "name": "zcode-proxy",
+  "version": "0.1.0",
+  "description": "Local relay that lets OpenAI/Anthropic tooling use ZCode start-plan (trial) tokens instead of per-token API billing",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "homepage": "https://github.com/vlelyavin/zcode-proxy",
+  "repository": { "type": "git", "url": "git+https://github.com/vlelyavin/zcode-proxy.git" },
+  "bugs": { "url": "https://github.com/vlelyavin/zcode-proxy/issues" },
+  "keywords": ["zcode", "z.ai", "glm", "trial", "start-plan", "relay", "proxy", "openai", "anthropic", "hermes"],
+  "bin": { "zcode-proxy": "src/cli.js" },
+  "scripts": {
+    "start": "node src/cli.js run",
+    "setup": "node src/cli.js setup",
+    "login": "node src/cli.js login",
+    "check": "node src/cli.js check",
+    "test": "node --test test/",
+    "health": "node src/cli.js check"
+  },
+  "engines": { "node": ">=20" }
+}

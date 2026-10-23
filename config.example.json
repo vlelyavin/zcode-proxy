@@ -1,0 +1,14 @@
+{
+  "bind": "127.0.0.1",
+  "port": 18960,
+  "localKey": "sk-zcode-change-me",
+  "credentialsPath": "~/.zcode/v2/credentials.json",
+  "telemetryPath": "~/.zcode/v2/telemetry-state.json",
+  "appVersion": "3.16.3",
+  "maxInflight": 2,
+  "effort": "high",
+  "models": {
+    "zcode": "GLM-5.3-Flash",
+    "zcode-5.3": "GLM-5.3"
+  }
+}
