@@ -2,6 +2,7 @@
 // Внутренний wire апстрима — anthropic; наружу отдаём openai, чтобы релеем
 // могли пользоваться hermes/opencode/что угодно с OpenAI-клиентом.
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const DEFAULT_PREAMBLE = new URL("../assets/harness-system.json", import.meta.url);
@@ -10,7 +11,9 @@ const DEFAULT_PREAMBLE = new URL("../assets/harness-system.json", import.meta.ur
 // Чужой системный текст допустим только внутри последнего блока — иначе 3012/502.
 export function loadPreamble(file = DEFAULT_PREAMBLE) {
   const p = file instanceof URL ? file : new URL(`file://${path.resolve(file)}`);
-  return JSON.parse(fs.readFileSync(p, "utf8"));
+  const raw = fs.readFileSync(p, "utf8");
+  // преамбула снята с живой машины, в ней фигурирует конкретный домашний каталог
+  return JSON.parse(raw.replaceAll("/home/vlelyavin", os.homedir()));
 }
 
 export function mergeSystem(preamble, extra) {

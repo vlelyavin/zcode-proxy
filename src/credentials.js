@@ -58,7 +58,9 @@ export function readJwt({ credentialsPath, secret } = {}) {
 }
 
 export function readDeviceMid({ telemetryPath } = {}) {
-  const candidates = [telemetryPath, "~/.zcode/v2/telemetry-state.json", "~/.zcode/v2/setting.json"];
+  const candidates = telemetryPath
+    ? [telemetryPath]
+    : ["~/.zcode/v2/telemetry-state.json", "~/.zcode/v2/setting.json"];
   for (const c of candidates) {
     if (!c) continue;
     try {
