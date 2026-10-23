@@ -1,6 +1,7 @@
 // Конфиг: файл + env-override. В конфиге нет секретов, кроме локального ключа;
 // сам JWT читается из кредов ZCode при старте и перечитывается на 401.
 import fs from "node:fs";
+import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
 import { readJwt, readDeviceMid, expandHome } from "./credentials.js";
@@ -42,8 +43,29 @@ export function loadConfig(file) {
 
   cfg.reloadCredentials = () => {
     cfg.jwt = readJwt({ credentialsPath: cfg.credentialsPath });
-    cfg.deviceMid = readDeviceMid({ telemetryPath: cfg.telemetryPath }) || cfg.deviceMid;
+    const fromClient = readDeviceMid({ telemetryPath: cfg.telemetryPath });
+    if (fromClient) cfg.deviceMid = fromClient;
+    else {
+      const baseDir = file ? path.dirname(expandHome(file)) : path.join(os.homedir(), ".config", "zcode-proxy");
+      cfg.deviceMid = cfg.deviceMid || persistentDeviceId(baseDir);
+    }
     return cfg.jwt;
   };
   return cfg;
+}
+
+// Клиентский device-mid появляется только после запуска приложения. Апстрим
+// принимает любой стабильный UUID, поэтому генерируем свой и держим рядом с конфигом.
+export function persistentDeviceId(dir) {
+  const file = path.join(dir, "device-id");
+  try {
+    const existing = fs.readFileSync(file, "utf8").trim();
+    if (existing) return existing;
+  } catch {}
+  const fresh = crypto.randomUUID();
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(file, fresh + "\n", { mode: 0o600 });
+  } catch {}
+  return fresh;
 }
