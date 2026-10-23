@@ -236,11 +236,13 @@ export function createServer(cfg) {
       })();
     }
 
-    if (url.pathname === "/v1/models")
+    if (url.pathname === "/v1/models") {
+      if (!authOk(req)) return fail(res, 401, "bad or missing local key", "auth_error");
       return json(res, 200, {
         object: "list",
         data: modelIds.map((id) => ({ id, object: "model", owned_by: "zcode", context_window: 1000000, max_output_tokens: 128000 })),
       });
+    }
 
     if (req.method !== "POST") return json(res, 405, { error: { message: "POST only" } });
     if (!authOk(req)) return fail(res, 401, "bad or missing local key", "auth_error");
