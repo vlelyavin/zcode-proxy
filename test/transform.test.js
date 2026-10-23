@@ -133,3 +133,10 @@ test("model ids resolve from canonical, legacy and upstream forms", () => {
   assert.equal(mapModel("GLM-5.3", models), "GLM-5.3");
   assert.equal(mapModel("", models), "GLM-5.3-Flash");
 });
+
+test("anthropic passthrough merges a string system into the harness preamble", () => {
+  const merged = mergeSystem(preamble, [{ type: "text", text: "мой системный текст" }]);
+  assert.equal(merged.length, 3);
+  assert.ok(merged[2].text.includes("мой системный текст"));
+  assert.equal(merged[0].text, preamble[0].text);
+});

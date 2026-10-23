@@ -3,7 +3,7 @@
 // Выход: zcode.z.ai, модельные пути anthropic-wire.
 import http from "node:http";
 import crypto from "node:crypto";
-import { buildUpstreamBody, createOpenAiStreamer, loadPreamble } from "./transform.js";
+import { buildUpstreamBody, createOpenAiStreamer, loadPreamble, mergeSystem, mapModel } from "./transform.js";
 import { MESSAGES_PATH, UPSTREAM_ORIGIN, BALANCE_PATH, requestHeaders, balanceHeaders } from "./upstream.js";
 
 const MAX_BODY = 48 * 1024 * 1024;
@@ -178,6 +178,13 @@ export function createServer(cfg) {
     } catch {
       return fail(res, 400, "invalid JSON body", "invalid_request_error");
     }
+    // пасsthrough обязан нести ту же преамбулу харнесса, иначе апстрим блочит 3012
+    const extraSystem = typeof body.system === "string"
+      ? (body.system ? [{ type: "text", text: body.system }] : [])
+      : Array.isArray(body.system) ? body.system : [];
+    body.system = mergeSystem(preamble, extraSystem);
+    body.model = mapModel(body.model, cfg.models);
+
     await acquire();
     try {
       const headers = upstreamHeaders();
