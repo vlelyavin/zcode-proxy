@@ -2,54 +2,60 @@
 
 [README на русском](README.ru.md)
 
-you have ZCode trial credits (start-plan). your tools want an api key. this sits in the middle: a local relay that pushes OpenAI/Anthropic calls through ZCode's own model endpoint on your account, so hermes / opencode / curl ride the trial bucket instead of a per-token bill.
+If you have ZCode trial credits (start-plan) and tools that expect a standard API key, this proxy bridges the gap. It is a local relay that routes OpenAI and Anthropic requests through the ZCode model endpoint on your account, letting tools like Hermes, OpenCode, or curl consume your trial quota instead of billing you per token.
 
-## what it does
+## What it does
 
-- speaks OpenAI on the front (`/v1/chat/completions`, streaming, tools) and Anthropic passthrough (`/v1/messages`)
-- forwards to `zcode.z.ai` over the anthropic wire the official client uses
-- reads your local ZCode credentials on start and again on `401` — no token in the repo
-- streams tool calls and thinking back as OpenAI deltas
-- retries `429`/`5xx` once, refreshes the token on `401`
-- zero npm dependencies. node stdlib, nothing else.
+- Exposes an OpenAI-compatible API (`/v1/chat/completions` with streaming and tool calling) and an Anthropic passthrough (`/v1/messages`).
+- Forwards requests to `zcode.z.ai` using the Anthropic wire format of the official client.
+- Loads your local ZCode credentials on startup and reloads them on `401` errors — no tokens are stored in the repository.
+- Streams tool calls and reasoning/thinking tokens back as standard OpenAI deltas.
+- Automatically retries `429` and `5xx` responses once, and refreshes tokens on `401`.
+- Zero npm dependencies — built entirely on the Node.js standard library.
 
-## what it is not
+## What it is not
 
-- not a z.ai product, not affiliated with them
-- not a hosted service — runs on your machine, your creds
-- not a credential bundle — nothing private ships in this repo
+- Not an official z.ai product and not affiliated with z.ai.
+- Not a hosted service — it runs locally on your machine with your credentials.
+- Not a credential distributor — no private tokens or secrets are shipped here.
 
-## straight talk
+## Straight talk
 
-it uses the trial relay outside the official client. the gateway checks that requests look like the real harness and answers `405 code 3012 unusual activity` otherwise. this repo carries the harness system preamble and merges your system prompt into its last block so that check passes. z.ai can change the rules any day. heavy parallel hammering on one account raises the flag odds — the relay queues at 2 in flight by default. blocked calls cost nothing, but retrying a flagged account does not help.
+This proxy accesses the trial endpoint outside of the official desktop client. Upstream gateway checks ensure that incoming requests mimic the official test harness; requests that fail fingerprinting are rejected with `405 code 3012 unusual activity`. To pass these checks, this proxy injects the harness system preamble and merges your system prompt into its final block. 
 
-promo buckets expire. check before the deadline. `curl -sS http://127.0.0.1:18960/status -H "authorization: Bearer <localKey>"`.
+Keep in mind that z.ai can change these rules at any time. Sending too many concurrent requests from a single account increases the risk of being flagged, so the relay limits concurrency to 2 in-flight requests by default. Blocked requests consume no credits, but retrying with a flagged account will not bypass the block.
 
-## requirements
+Trial quotas expire over time. Check your remaining balance and expiration date with:
+```bash
+curl -sS http://127.0.0.1:18960/status -H "authorization: Bearer <localKey>"
+```
 
-- node 22.5+ (the login runtime needs `node:sqlite`)
-- a logged-in ZCode client on this machine: `~/.zcode/v2/credentials.json` must exist. no file, no relay.
-- trial credits on the account. paid open-platform keys do not need this relay.
+## Requirements
 
-## install
+- Node.js 22.5+ (the login runtime relies on `node:sqlite`).
+- Linux or macOS (Windows works through WSL, the login helper is bash).
+- An active ZCode session on this machine: `~/.zcode/v2/credentials.json` must be present.
+- Trial credits on the account. (Paid open-platform API keys do not need this proxy.)
+
+## Install
 
 ```bash
 git clone https://github.com/vlelyavin/zcode-proxy.git
 cd zcode-proxy
 npm i -g zcode-app-cli     # official client runtime, used only for login
-./bin/zcode-login          # prints a link, open it on any device logged into chat.z.ai
+./bin/zcode-login          # prints a link; open it on any device logged into chat.z.ai
 node src/cli.js setup      # writes config.json with a random local key
-node src/cli.js check      # credentials + endpoint + remaining credits
+node src/cli.js check      # verifies credentials, endpoint access, and remaining credits
 node src/cli.js run
 ```
 
-no `npm install` in the repo itself. listens on `127.0.0.1:18960`.
+There is no `npm install` step for the repository itself. The server listens on `127.0.0.1:18960` by default.
 
 ```bash
 curl -sS http://127.0.0.1:18960/health
 ```
 
-## use
+## Use
 
 ```bash
 # openai-compatible client
@@ -59,55 +65,66 @@ curl -sS http://127.0.0.1:18960/v1/chat/completions \
   -d '{"model":"zcode","stream":true,"messages":[{"role":"user","content":"ping"}]}'
 ```
 
-models: `zcode` (GLM-5.3-Flash) and `zcode-5.3` (GLM-5.3). aliases `glm-5.3-flash` / `glm-5.3` work too.
+Supported models: `zcode` (GLM-5.3-Flash) and `zcode-5.3` (GLM-5.3). The aliases `glm-5.3-flash` and `glm-5.3` are also supported.
 
-hermes: point a custom provider at `http://127.0.0.1:18960/v1` with the `localKey` and call the model `zcode` or `zcode-5.3`.
+For Hermes: configure a custom provider pointing to `http://127.0.0.1:18960/v1` with your `localKey`, and set the model to `zcode` or `zcode-5.3`.
 
-## config
+## Config
 
-optional. `config.example.json` shows the shape.
+Configuration is optional. See `config.example.json` for the schema.
 
 ```bash
 ZCODE_PROXY_CONFIG=./config.json node src/cli.js run
 ```
 
-| key | meaning |
+| Key | Description |
 | --- | --- |
-| `bind` / `port` | listen address, default `127.0.0.1:18960` |
-| `localKey` | shared secret for inbound requests; wrong or missing → 401 |
-| `models` | alias → upstream model id |
-| `maxInflight` | concurrent upstream calls (default 2) |
-| `effort` | default `output_config.effort` when the caller sends no `reasoning_effort` |
-| `credentialsPath` / `telemetryPath` | where the client keeps tokens / device id |
-| `appVersion` | version string reported in the fingerprint headers |
+| `bind` / `port` | Listen address and port (default: `127.0.0.1:18960`) |
+| `localKey` | Shared bearer token for incoming requests; returns `401` if missing or invalid |
+| `models` | Map of alias names to upstream model IDs |
+| `maxInflight` | Maximum concurrent upstream requests (default: `2`) |
+| `effort` | Default `output_config.effort` when the client omits `reasoning_effort` |
+| `credentialsPath` / `telemetryPath` | Paths to the client token store and device telemetry ID |
+| `appVersion` | Client version sent in fingerprinting headers |
 
-env overrides: `ZCODE_PROXY_BIND`, `ZCODE_PROXY_PORT`, `ZCODE_PROXY_KEY`, `ZCODE_PROXY_EFFORT`, `ZCODE_PROXY_MAX_INFLIGHT`, `ZCODE_PROXY_CONFIG`.
+Environment variables take precedence over `config.json`: `ZCODE_PROXY_BIND`, `ZCODE_PROXY_PORT`, `ZCODE_PROXY_KEY`, `ZCODE_PROXY_EFFORT`, `ZCODE_PROXY_MAX_INFLIGHT`, and `ZCODE_PROXY_CONFIG`.
 
-## systemd
+## Running it in the background
+
+Linux - a user systemd unit with lingering enabled:
 
 ```bash
-./scripts/install-systemd.sh     # user unit, linger on
+./scripts/install-systemd.sh
 ```
 
-details in [docs/systemd.md](docs/systemd.md).
+See [docs/systemd.md](docs/systemd.md) for details.
 
-## when it breaks
+macOS - a user LaunchAgent:
 
-| symptom | cause |
+```bash
+./scripts/install-launchd.sh
+```
+
+See [docs/macos.md](docs/macos.md) for details.
+
+## Troubleshooting
+
+| Symptom | Cause |
 | --- | --- |
-| `405 {"code":3012}` | request does not look like the harness. keep the 3 system blocks intact, merge extra text into the third (see `docs/architecture.md`) |
-| `502 Bad Gateway` | gateway hiccup on a valid request; retried once, usually fine |
-| `401 VERIFY_*` | JWT dead — `./bin/zcode-login`, restart |
-| `cannot read ZCode credentials` | not logged in, or the file is encrypted under another user/secret |
-| empty answers | `max_tokens` too small for thinking; the model spends it on reasoning first |
+| `405 {"code":3012}` | Request failed harness fingerprinting. Ensure all 3 system blocks remain intact, with custom text merged into the third (see [docs/architecture.md](docs/architecture.md)). |
+| `502 Bad Gateway` | Temporary upstream gateway glitch on a valid request. It is retried once automatically and usually succeeds. |
+| `401 VERIFY_*` | Expired JWT. Run `./bin/zcode-login` and restart the proxy. |
+| `cannot read ZCode credentials` | You are not logged in, or the file is encrypted under a different user or secret. |
+| Empty responses | `max_tokens` is set too low. The model exhausts the token budget on reasoning before generating the final answer. |
 
-`401` from the proxy itself means the `localKey` does not match.
+A `401` returned directly by the proxy means the incoming request's Bearer token did not match `localKey`.
 
-## docs
+## Docs
 
-- [architecture](docs/architecture.md) — wire, auth, the system-block rule, metering
-- [systemd](docs/systemd.md)
+- [Architecture](docs/architecture.md) — protocol wire format, auth flow, system-block rules, and metering
+- [Systemd setup](docs/systemd.md)
+- [LaunchAgent setup on macOS](docs/macos.md)
 
-## license
+## License
 
-MIT.
+MIT
