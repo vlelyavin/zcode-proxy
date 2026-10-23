@@ -1,13 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mergeSystem, mapModel, buildUpstreamBody, toAnthropicParts, createOpenAiStreamer } from "../src/transform.js";
+import { loadPreamble, mergeSystem, mapModel, buildUpstreamBody, toAnthropicParts, createOpenAiStreamer } from "../src/transform.js";
 
 const preamble = [
   { type: "text", text: "You are ZCode, an interactive coding agent" },
   { type: "text", text: "block two" },
   { type: "text", text: "block three" },
 ];
-const models = { zcode: "GLM-5.3-Flash", "zcode-5.3": "GLM-5.3" };
+const models = { "glm-5.3-flash": "GLM-5.3-Flash", "glm-5.3": "GLM-5.3" };
 const ctx = { preamble, models, effort: "high", deviceMid: "dev-1", sessionId: "sess_1" };
 
 test("system stays exactly three blocks, caller text is appended to the last one", () => {
@@ -111,4 +111,25 @@ test("streamer emits openai chunks for text, thinking and tools", () => {
   assert.equal(payloads.find((p) => p.choices[0].finish_reason).choices[0].finish_reason, "tool_calls");
   assert.equal(written.at(-2), "data: [DONE]\n\n");
   assert.equal(written.at(-1), "__END__");
+});
+
+test("preamble survives a windows home directory", () => {
+  // C:\Users\... ломает JSON, если подставлять путь по сырому тексту
+  const home = "C:\\Users\\vova";
+  const blocks = loadPreamble(undefined, home);
+  const joined = JSON.stringify(blocks);
+  assert.ok(blocks.length === 3);
+  assert.ok(joined.includes("C:\\\\Users\\\\vova"), "home substituted");
+  assert.ok(!joined.includes("/home/vlelyavin"), "no leftover absolute path");
+});
+
+test("model ids resolve from canonical, legacy and upstream forms", () => {
+  const models = { "glm-5.3-flash": "GLM-5.3-Flash", "glm-5.3": "GLM-5.3" };
+  assert.equal(mapModel("glm-5.3-flash", models), "GLM-5.3-Flash");
+  assert.equal(mapModel("glm-5.3", models), "GLM-5.3");
+  assert.equal(mapModel("zcode", models), "GLM-5.3-Flash");
+  assert.equal(mapModel("zcode-5.3", models), "GLM-5.3");
+  assert.equal(mapModel("GLM-5.3-Flash", models), "GLM-5.3-Flash");
+  assert.equal(mapModel("GLM-5.3", models), "GLM-5.3");
+  assert.equal(mapModel("", models), "GLM-5.3-Flash");
 });

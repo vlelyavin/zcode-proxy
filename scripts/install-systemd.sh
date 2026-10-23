@@ -37,6 +37,8 @@ done
 if [[ $SYSTEM -eq 1 ]]; then
   [[ $EUID -eq 0 ]] || { echo "run as root for --system" >&2; exit 1; }
   UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+  # без sudo SUDO_USER пуст - домашний каталог тогда /root, иначе getent по владельцу
+  HOME_DIR=$([ -n "${SUDO_USER:-}" ] && getent passwd "$SUDO_USER" | cut -d: -f6 || echo /root)
   cat > "$UNIT_PATH" <<EOF
 [Unit]
 Description=zcode-proxy (ZCode start-plan relay)
@@ -48,7 +50,7 @@ Type=simple
 User=${SUDO_USER:-root}
 WorkingDirectory=${WORKDIR}
 ExecStart=${NODE_BIN} ${WORKDIR}/src/cli.js run
-Environment=HOME=/home/${SUDO_USER:-root}
+Environment=HOME=${HOME_DIR}
 Environment=ZCODE_PROXY_CONFIG=${CONFIG_PATH}
 Restart=always
 RestartSec=3

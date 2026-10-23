@@ -9,11 +9,20 @@ const DEFAULT_PREAMBLE = new URL("../assets/harness-system.json", import.meta.ur
 
 // Сервер валидирует форму system: ровно преамбула харнесса (3 блока).
 // Чужой системный текст допустим только внутри последнего блока — иначе 3012/502.
-export function loadPreamble(file = DEFAULT_PREAMBLE) {
+export function loadPreamble(file = DEFAULT_PREAMBLE, home = os.homedir()) {
   const p = file instanceof URL ? file : new URL(`file://${path.resolve(file)}`);
-  const raw = fs.readFileSync(p, "utf8");
-  // преамбула снята с живой машины, в ней фигурирует конкретный домашний каталог
-  return JSON.parse(raw.replaceAll("/home/vlelyavin", os.homedir()));
+  // преамбула снята с живой машины и ссылается на конкретный домашний каталог;
+  // подменяем после разбора, иначе windows-путь (C:\Users\...) ломает JSON-escape.
+  return swapHome(JSON.parse(fs.readFileSync(p, "utf8")), home);
+}
+
+function swapHome(value, home) {
+  if (typeof value === "string") return value.replaceAll("/home/vlelyavin", home);
+  if (Array.isArray(value)) return value.map((v) => swapHome(v, home));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, swapHome(v, home)]));
+  }
+  return value;
 }
 
 export function mergeSystem(preamble, extra) {
@@ -51,12 +60,15 @@ export function toAnthropicParts(content) {
   return out.length ? out : [{ type: "text", text: "" }];
 }
 
+// Принимает и канонические id, и старые (zcode, zcode-5.3), и уже готовое
+// upstream-имя - клиент может закэшировать любое из них.
 export function mapModel(id, models) {
-  if (!id) return models.zcode;
+  if (!id) return models["glm-5.3-flash"] || "GLM-5.3-Flash";
   if (models[id]) return models[id];
   const low = String(id).toLowerCase();
-  if (low.includes("flash")) return models.zcode;
-  if (low.startsWith("glm-5.3") || low === "zcode-5.3") return models["zcode-5.3"];
+  if (Object.values(models).some((v) => String(v).toLowerCase() === low)) return String(id);
+  if (low.includes("flash") || low === "zcode") return models["glm-5.3-flash"] || "GLM-5.3-Flash";
+  if (low.includes("5.3")) return models["glm-5.3"] || "GLM-5.3";
   return String(id);
 }
 

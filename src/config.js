@@ -17,7 +17,9 @@ export const DEFAULTS = {
   maxInflight: 2,
   effort: "high",
   timeoutMs: 600000,
-  models: { zcode: "GLM-5.3-Flash", "zcode-5.3": "GLM-5.3" },
+  models: { "glm-5.3-flash": "GLM-5.3-Flash", "glm-5.3": "GLM-5.3" },
+  // старые id: жили до переименования, оставлены чтобы чужие конфиги не отвалились
+  aliases: { zcode: "glm-5.3-flash", "zcode-5.3": "glm-5.3" },
 };
 
 export function loadConfig(file) {
@@ -27,7 +29,7 @@ export function loadConfig(file) {
     if (!fs.existsSync(p)) throw new Error(`config not found: ${p}`);
     fileCfg = JSON.parse(fs.readFileSync(p, "utf8"));
   }
-  const cfg = { ...DEFAULTS, ...fileCfg, models: { ...DEFAULTS.models, ...(fileCfg.models || {}) } };
+  const cfg = { ...DEFAULTS, ...fileCfg, models: { ...DEFAULTS.models, ...(fileCfg.models || {}) }, aliases: { ...DEFAULTS.aliases, ...(fileCfg.aliases || {}) } };
   for (const [env, key] of [
     ["ZCODE_PROXY_BIND", "bind"],
     ["ZCODE_PROXY_PORT", "port"],

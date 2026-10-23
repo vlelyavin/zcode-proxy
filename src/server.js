@@ -178,7 +178,6 @@ export function createServer(cfg) {
     } catch {
       return fail(res, 400, "invalid JSON body", "invalid_request_error");
     }
-    body.model = cfg.models[body.model] || cfg.models.zcode;
     await acquire();
     try {
       const headers = upstreamHeaders();

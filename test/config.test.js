@@ -16,9 +16,10 @@ test("device id is generated once and reused", () => {
   assert.equal(fs.readFileSync(path.join(dir, "device-id"), "utf8").trim(), first);
 });
 
-test("default config carries both model aliases", () => {
-  assert.equal(DEFAULTS.models.zcode, "GLM-5.3-Flash");
-  assert.equal(DEFAULTS.models["zcode-5.3"], "GLM-5.3");
+test("default config carries both models and the legacy aliases", () => {
+  assert.equal(DEFAULTS.models["glm-5.3-flash"], "GLM-5.3-Flash");
+  assert.equal(DEFAULTS.models["glm-5.3"], "GLM-5.3");
+  assert.equal(DEFAULTS.aliases.zcode, "glm-5.3-flash");
 });
 
 test("a local key is minted when the config has none", () => {
@@ -36,5 +37,5 @@ test("file values win over defaults", () => {
   const cfg = loadConfig(file);
   assert.equal(cfg.port, 19001);
   assert.equal(cfg.models.custom, "GLM-5.3");
-  assert.equal(cfg.models.zcode, "GLM-5.3-Flash");
+  assert.equal(cfg.models["glm-5.3-flash"], "GLM-5.3-Flash");
 });
