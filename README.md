@@ -8,16 +8,16 @@ If you have ZCode trial credits (start-plan) and tools that expect a standard AP
 
 - Exposes an OpenAI-compatible API (`/v1/chat/completions` with streaming and tool calling) and an Anthropic passthrough (`/v1/messages`).
 - Forwards requests to `zcode.z.ai` using the Anthropic wire format of the official client.
-- Loads your local ZCode credentials on startup and reloads them on `401` errors — no tokens are stored in the repository.
+- Loads your local ZCode credentials on startup and reloads them on `401` errors - no tokens are stored in the repository.
 - Streams tool calls and reasoning/thinking tokens back as standard OpenAI deltas.
 - Automatically retries `429` and `5xx` responses once, and refreshes tokens on `401`.
-- Zero npm dependencies — built entirely on the Node.js standard library.
+- Zero npm dependencies - built entirely on the Node.js standard library.
 
 ## What it is not
 
 - Not an official z.ai product and not affiliated with z.ai.
-- Not a hosted service — it runs locally on your machine with your credentials.
-- Not a credential distributor — no private tokens or secrets are shipped here.
+- Not a hosted service - it runs locally on your machine with your credentials.
+- Not a credential distributor - no private tokens or secrets are shipped here.
 
 ## Straight talk
 
@@ -121,7 +121,7 @@ A `401` returned directly by the proxy means the incoming request's Bearer token
 
 ## Docs
 
-- [Architecture](docs/architecture.md) — protocol wire format, auth flow, system-block rules, and metering
+- [Architecture](docs/architecture.md) - protocol wire format, auth flow, system-block rules, and metering
 - [Systemd setup](docs/systemd.md)
 - [LaunchAgent setup on macOS](docs/macos.md)
 

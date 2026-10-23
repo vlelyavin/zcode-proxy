@@ -122,7 +122,7 @@ macOS - пользовательский LaunchAgent:
 
 ## Документация
 
-- [Архитектура](docs/architecture.md) — сетевой протокол, авторизация, правила формирования системных блоков и биллинг.
+- [Архитектура](docs/architecture.md) - сетевой протокол, авторизация, правила формирования системных блоков и биллинг.
 - [Настройка systemd](docs/systemd.md)
 - [Настройка LaunchAgent на macOS](docs/macos.md)
 - [Настройка LaunchAgent на macOS](docs/macos.md)
