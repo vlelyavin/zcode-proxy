@@ -18,5 +18,5 @@
     "test": "node --test test/",
     "health": "node src/cli.js check"
   },
-  "engines": { "node": ">=20" }
+  "engines": { "node": ">=22.5" }
 }

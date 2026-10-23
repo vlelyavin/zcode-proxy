@@ -27,7 +27,7 @@ promo buckets expire. check before the deadline. `curl -sS http://127.0.0.1:1896
 
 ## requirements
 
-- node 20+ (24+ recommended)
+- node 22.5+ (the login runtime needs `node:sqlite`)
 - a logged-in ZCode client on this machine: `~/.zcode/v2/credentials.json` must exist. no file, no relay.
 - trial credits on the account. paid open-platform keys do not need this relay.
 

@@ -7,10 +7,38 @@
 # Скрипт зовёт рантайм напрямую и обходит mac-only проверку.
 set -euo pipefail
 
+# рантайму нужен node:sqlite (node >= 22.5)
+need_node() {
+  [ -n "$1" ] && [ -x "$1" ] || return 1
+  local v major minor
+  v="$("$1" -p 'process.versions.node' 2>/dev/null || true)"
+  [ -n "$v" ] || return 1
+  major="${v%%.*}"
+  minor="$(printf '%s' "$v" | cut -d. -f2)"
+  [ "$major" -gt 22 ] || { [ "$major" -eq 22 ] && [ "$minor" -ge 5 ]; }
+}
+
+NODE=""
+for cand in \
+  "${ZCODE_NODE:-}" \
+  "$HOME/.local/node22/bin/node" \
+  "$(command -v node || true)" \
+  "$HOME/.local/share/mise/installs/node/$(ls "$HOME/.local/share/mise/installs/node" 2>/dev/null | sort -V | tail -1)/bin/node" \
+  "$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node" 2>/dev/null | sort -V | tail -1)/bin/node"; do
+  if need_node "$cand"; then NODE="$cand"; break; fi
+done
+[ -n "$NODE" ] || { echo "need node >= 22.5 (runtime requires node:sqlite); set ZCODE_NODE=/path/to/node" >&2; exit 1; }
+
 RUNTIME="${ZCODE_RUNTIME:-$HOME/.local/lib/node_modules/zcode-app-cli/vendor/zcode.cjs}"
-NODE="${ZCODE_NODE:-$(command -v node || true)}"
-[ -z "$NODE" ] && [ -x "$HOME/.zcode/server/node" ] && NODE="$HOME/.zcode/server/node"
-[ -z "$NODE" ] && { echo "node not found: install node.js >= 20" >&2; exit 1; }
+if [ ! -f "$RUNTIME" ]; then
+  for cand in \
+    "$(npm root -g 2>/dev/null)/zcode-app-cli/vendor/zcode.cjs" \
+    "$HOME/.npm-global/lib/node_modules/zcode-app-cli/vendor/zcode.cjs" \
+    "/usr/local/lib/node_modules/zcode-app-cli/vendor/zcode.cjs" \
+    "/usr/lib/node_modules/zcode-app-cli/vendor/zcode.cjs"; do
+    [ -f "$cand" ] && RUNTIME="$cand" && break
+  done
+fi
 [ -f "$RUNTIME" ] || { echo "runtime not found: npm i -g zcode-app-cli" >&2; exit 1; }
 
 echo "Open the link below on any device where you are logged into chat.z.ai."

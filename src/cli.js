@@ -44,15 +44,53 @@ function cmdSetup() {
   console.log(`next: zcode-proxy run`);
 }
 
+function nodeTooOld(bin) {
+  try {
+    const v = spawnSync(bin, ["-p", "process.versions.node"], { encoding: "utf8" }).stdout?.trim() || "";
+    const [major, minor] = v.split(".").map(Number);
+    return !(major > 22 || (major === 22 && minor >= 5));
+  } catch {
+    return true;
+  }
+}
+
+function findNode() {
+  const candidates = [
+    process.env.ZCODE_NODE,
+    path.join(os.homedir(), ".local/node22/bin/node"),
+    process.execPath,
+  ];
+  for (const bin of candidates) {
+    if (bin && fs.existsSync(bin) && !nodeTooOld(bin)) return bin;
+  }
+  return null;
+}
+
 function cmdLogin() {
-  const runtime = path.join(os.homedir(), ".local/lib/node_modules/zcode-app-cli/vendor/zcode.cjs");
-  const fallback = ["/usr/local/lib/node_modules/zcode-app-cli/vendor/zcode.cjs", "/usr/lib/node_modules/zcode-app-cli/vendor/zcode.cjs"];
-  const found = [runtime, ...fallback].find((p) => fs.existsSync(p));
+  const node = findNode();
+  if (!node) die("need node >= 22.5 (runtime requires node:sqlite); set ZCODE_NODE=/path/to/node");
+  const candidates = [
+    path.join(os.homedir(), ".local/lib/node_modules/zcode-app-cli/vendor/zcode.cjs"),
+    ...npmGlobalCandidates(),
+    "/usr/local/lib/node_modules/zcode-app-cli/vendor/zcode.cjs",
+    "/usr/lib/node_modules/zcode-app-cli/vendor/zcode.cjs",
+  ];
+  const found = candidates.find((p) => p && fs.existsSync(p));
   if (!found) die("zcode-app-cli not installed. run: npm i -g zcode-app-cli");
   console.log("open the printed link in any browser where you are logged into chat.z.ai.");
   console.log("the flow lives ~12 minutes, polling is automatic.\n");
-  const child = spawnSync(process.execPath, [found, "login", "--no-browser"], { stdio: "inherit" });
+  const child = spawnSync(node, [found, "login", "--no-browser"], { stdio: "inherit" });
   process.exit(child.status ?? 1);
+}
+
+function npmGlobalCandidates() {
+  const out = [];
+  try {
+    const root = spawnSync("npm", ["root", "-g"], { encoding: "utf8" }).stdout?.trim();
+    if (root) out.push(path.join(root, "zcode-app-cli/vendor/zcode.cjs"));
+  } catch {}
+  out.push(path.join(os.homedir(), ".npm-global/lib/node_modules/zcode-app-cli/vendor/zcode.cjs"));
+  return out;
 }
 
 async function cmdCheck() {
