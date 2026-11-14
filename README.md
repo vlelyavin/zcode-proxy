@@ -89,6 +89,8 @@ ZCODE_PROXY_CONFIG=./config.json node src/cli.js run
 
 Environment variables take precedence over `config.json`: `ZCODE_PROXY_BIND`, `ZCODE_PROXY_PORT`, `ZCODE_PROXY_KEY`, `ZCODE_PROXY_EFFORT`, `ZCODE_PROXY_MAX_INFLIGHT`, and `ZCODE_PROXY_CONFIG`.
 
+Credentials written by ZCode 3.18+ (`enc:v2:os:...`) keep their key in the OS secret store; the proxy reads it through the client's `@napi-rs/keyring` module, by default from the Windows install path. Elsewhere set `ZCODE_KEYRING_MODULE` to that native module.
+
 ## Running it in the background
 
 Linux - a user systemd unit with lingering enabled:
