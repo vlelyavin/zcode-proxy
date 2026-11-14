@@ -1,7 +1,6 @@
 // Чтение локальных кредов ZCode: JWT старт-плана и device-mid.
-// Значения в credentials.json лежат как "enc:v1:<iv>.<tag>.<data>"
-// (AES-256-GCM, ключ = sha256(secret)). Секрет берётся из ZCODE_CREDENTIAL_SECRET,
-// иначе повторяется детерминированный фолбэк рантайма клиента.
+// v1: "enc:v1:<iv>.<tag>.<data>", AES-256-GCM, ключ = sha256(secret) —
+// секрет из ZCODE_CREDENTIAL_SECRET, иначе детерминированный фолбэк клиента.
 import fs from "node:fs";
 import os from "node:os";
 import crypto from "node:crypto";
@@ -31,9 +30,8 @@ function deriveKey(secret) {
   return crypto.createHash("sha256").update(secret).digest();
 }
 
-export function decryptValue(value, key) {
-  if (!value.startsWith(PREFIX)) return value;
-  const [iv, tag, data] = value.slice(PREFIX.length).split(".");
+export function openSealed(payload, key) {
+  const [iv, tag, data] = payload.split(".");
   if (!iv || !tag || !data) throw new Error("credential decrypt failed: bad ciphertext");
   try {
     const d = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"));
@@ -42,6 +40,11 @@ export function decryptValue(value, key) {
   } catch (e) {
     throw new Error("credential decrypt failed: key mismatch or corrupted ciphertext");
   }
+}
+
+export function decryptValue(value, key) {
+  if (!value.startsWith(PREFIX)) return value;
+  return openSealed(value.slice(PREFIX.length), key);
 }
 
 export function readCredentialRecord(file) {
