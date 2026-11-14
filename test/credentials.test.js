@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
-import { decryptValue, credentialSecret, readJwt, readDeviceMid } from "../src/credentials.js";
+import { decryptValue, credentialSecret, readJwt, readDeviceMid, openSealed, parseV2 } from "../src/credentials.js";
 
 const key = crypto.createHash("sha256").update("test-secret").digest();
 
@@ -13,6 +13,15 @@ function encrypt(value) {
   const c = crypto.createCipheriv("aes-256-gcm", key, iv);
   const data = Buffer.concat([c.update(value, "utf8"), c.final()]);
   return `enc:v1:${iv.toString("base64url")}.${c.getAuthTag().toString("base64url")}.${data.toString("base64url")}`;
+}
+
+// снято с клиента ZCode 3.18.2 (2026-11-14): enc:v2:os:<fp24>:<iv>.<tag>.<data>
+function encryptV2(value, key) {
+  const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const data = Buffer.concat([c.update(value, "utf8"), c.final()]);
+  const fp = crypto.createHash("sha256").update(key).digest("hex").slice(0, 24);
+  return `enc:v2:os:${fp}:${iv.toString("base64url")}.${c.getAuthTag().toString("base64url")}.${data.toString("base64url")}`;
 }
 
 const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1In0.c2ln";
@@ -25,6 +34,20 @@ function tmpRecord(record) {
 
 test("ciphertext round-trips", () => {
   assert.equal(decryptValue(encrypt("hello"), key), "hello");
+});
+
+test("v2 envelope names its key and uses the same cipher", () => {
+  const { fingerprint, payload } = parseV2(encryptV2(jwt, key));
+  assert.equal(fingerprint, crypto.createHash("sha256").update(key).digest("hex").slice(0, 24));
+  assert.equal(openSealed(payload, key), jwt);
+});
+
+test("v2 with a non-OS key source is refused", () => {
+  assert.throws(() => parseV2(`enc:v2:env:${"a".repeat(24)}:x.y.z`), /unsupported credential key source/);
+});
+
+test("decryptValue never passes an enc:v2 blob through as plaintext", () => {
+  assert.throws(() => decryptValue(encryptV2(jwt, key), key), /enc:v2/);
 });
 
 test("plain values pass through", () => {

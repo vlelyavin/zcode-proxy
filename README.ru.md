@@ -90,6 +90,8 @@ ZCODE_PROXY_CONFIG=./config.json node src/cli.js run
 
 Переменные окружения: `ZCODE_PROXY_BIND`, `ZCODE_PROXY_PORT`, `ZCODE_PROXY_KEY`, `ZCODE_PROXY_EFFORT`, `ZCODE_PROXY_MAX_INFLIGHT`, `ZCODE_PROXY_CONFIG`.
 
+Ключ кредов ZCode 3.18+ (`enc:v2:os:...`) лежит в системном хранилище секретов; релей читает его через нативный модуль клиента `@napi-rs/keyring` — по умолчанию по пути установки Windows. На других ОС укажите `ZCODE_KEYRING_MODULE` с путём к этому модулю.
+
 ## Автозапуск
 
 Linux - пользовательский сервис systemd:
